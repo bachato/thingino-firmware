@@ -35,7 +35,7 @@ also runs standalone if you need full control (`harness.py --help`).
 
 Requirements: `dnsmasq` and `tcpdump` installed, `npm ci` in this
 directory plus `npx playwright install chromium` for the browser tests,
-and passwordless `sudo` for tap mode. A tap run lives in its own network
+and passwordless `sudo` for tap and slip modes (slip needs `/dev/net/tun`). A tap run lives in its own network
 namespace (`qt-<pid>`), so it never touches the host's DNS, NTP or syslog
 ports, nothing gets parked, and several tap runs can share one host.
 
@@ -51,7 +51,7 @@ ports, nothing gets parked, and several tap runs can share one host.
 | --- | --- |
 | `soc` | key into `SOC_MACHINES` (machine, RAM) |
 | `caps` | what the camera has: `wired` (an uplink), `wifi` (a radio) |
-| `net` | default backend: `tap` runs the full lab, `slirp` bridges through host port forwards |
+| `net` | default backend: `tap` runs the full lab, `slip` is IP over the guest's UART0 (no wired MAC, boots like a real WiFi-only camera), `slirp` bridges through host port forwards |
 
 What runs follows from the capabilities: a wifi-only camera exercises the
 portal, provisioning and the reboot into STA; a wired one the full network
@@ -225,9 +225,10 @@ These all cost real debugging time; check them before going deeper.
 - **Test images boot with `debug=1`** (`configs/cameras-testing/<profile>/uenv.txt`),
   so the console getty drops straight to a root shell with no login
   prompt. `login()` handles both.
-- **A wifi-only profile has an eth0 that real WiFi-only cameras lack.** An instant
-  slirp lease makes the wired-gateway logic kill WiFi, so the STA test
-  drops the link over QMP first.
+- **Only the slirp profiles (a1n) carry an eth0 that real WiFi-only cameras
+  lack.** The slip profiles have no wired MAC at all and boot exactly like
+  hardware; on slirp an instant lease makes the wired-gateway logic kill
+  WiFi, so the STA test drops the link over QMP first.
 - **Slirp host forwards target `10.0.2.15`.** The guest re-randomises its
   MAC each boot, so after a reboot re-add the address statically and ping
   the gateway once to refresh the stale ARP entry.

@@ -20,8 +20,8 @@ dmesg_no_oops
 dmesg_modules_clean
 syslog_no_segfault
 memory_floor
-bridge_eth0_dhcp
-bridge_ip_forward
+slip_guest_link
+slip_host_ping
 ssh_channel
 host_portal_reachable
 host_portal_content
