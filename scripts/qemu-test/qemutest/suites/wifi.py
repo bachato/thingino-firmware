@@ -27,9 +27,31 @@ def test_wifi_portal(ctx):
     m = re.search(r"200:(\d+)", out)
     portal_bytes = int(m.group(1)) if m else 0
     res.check("portal_serves_html", portal_bytes > 100, f"{portal_bytes} bytes")
+    # A 200 with HTML is not enough: a normal-mode uhttpd behind the portal
+    # AP serves the web UI login page, which is also a 200 and also HTML.
+    rc, out = guest.run("grep -c 'wlan_ssid' /tmp/_portal 2>/dev/null")
+    count = out.strip().split("\n")[-1].strip()
+    is_portal = count.isdigit() and int(count) > 0    # a count, never a stray message
+    res.check("portal_page_is_portal", is_portal,
+              f"{count} wlan_ssid references" if is_portal
+              else "fetched page has no wlan_ssid form (web UI instead of portal?)")
 
-    rc, out = guest.run("cat /run/portal_mode 2>&1")
-    res.check("portal_mode_flag", "No such file" not in out)
+    rc, out = guest.run("[ -f /run/portal_mode ] && echo FLAG_OK")
+    res.check("portal_mode_flag", "FLAG_OK" in out)
+
+    # The invariant both known races violate: once /run/portal_mode exists
+    # the running uhttpd must be the portal one. The transition may still be
+    # in flight right after the AP appears, so wait for it, then judge; the
+    # detail is what is actually running when it never arrives.
+    out = guest.run_until(
+        "[ -f /run/portal_mode ] && pgrep -f 'uhttpd -h /var/www-portal' "
+        ">/dev/null && echo PORTAL_UHTTPD; pgrep -af uhttpd",
+        lambda o: "PORTAL_UHTTPD" in o, 45, 3)
+    running = [l.strip() for l in out.splitlines() if "uhttpd -h" in l]
+    res.check("portal_uhttpd_mode", "PORTAL_UHTTPD" in out,
+              "" if "PORTAL_UHTTPD" in out
+              else ("running: " + " | ".join(running)[:110] if running
+                    else "no uhttpd running"))
 
 
 def test_wifi_modules(ctx):

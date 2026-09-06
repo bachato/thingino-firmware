@@ -110,7 +110,7 @@ def main():
             args.image = newest_image(args.profile)
             if not args.image:
                 sys.exit(f"No built image found for {args.profile} "
-                         f"(looked in output/**/{args.profile}-*/images/)\n"
+                         f"(looked in output/*/{args.profile}-*/images/)\n"
                          f"Build it with: make GROUP=testing "
                          f"CAMERA={args.profile}")
         if not args.qemu and not os.environ.get("QEMU_BIN"):
